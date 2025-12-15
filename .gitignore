@@ -1,0 +1,12 @@
+# CMake
+/build/
+/CMakeFiles/
+/CMakeCache.txt
+/*.cmake
+Makefile
+*.o
+*.a
+*.so
+
+# VS Code
+.vscode/
