@@ -18,8 +18,9 @@ Notes:
   - Division by zero is an error
 
 Examples:
+
   calc 2 + 3
 
   calc 5 !
-  
+
   calc 2 ^ 8
