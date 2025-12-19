@@ -19,5 +19,7 @@ Notes:
 
 Examples:
   calc 2 + 3
+
   calc 5 !
+  
   calc 2 ^ 8
