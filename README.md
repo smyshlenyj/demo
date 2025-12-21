@@ -6,6 +6,7 @@ calc is a simple CLI-calculator.
 ```
 calc <number1> <operation> <number2>
 calc <number> !
+calc --help
 ```
 
 ## Operations
