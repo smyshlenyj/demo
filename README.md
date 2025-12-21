@@ -29,3 +29,8 @@ calc 2 + 3
 calc 5 !
 calc 2 ^ 8
 ```
+
+## Build
+cmake -B build
+cmake --build build
+sudo cmake --build build --target install
