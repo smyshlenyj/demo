@@ -49,6 +49,11 @@ FetchContent_MakeAvailable(mathlib)
 # Create main executable
 add_executable(calc src/main.cpp src/runner.cpp)
 
+# Include your project's headers
+target_include_directories(calc
+    PRIVATE ${PROJECT_SOURCE_DIR}/include
+)
+
 # Link with mathlib
 target_link_libraries(calc PRIVATE math)
 

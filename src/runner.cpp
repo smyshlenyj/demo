@@ -1,9 +1,10 @@
-#include <cmath>
+#include "runner.h"
+
+#include <inttypes.h>
+
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-
-#include "math.h"
 
 void printHelp(const char* prog)
 {
@@ -33,9 +34,9 @@ void printHelp(const char* prog)
 
 struct ParsedArgs
 {
-    int x;
-    int y;           // Only used for binary operations
-    char operation;  // '+', '-', 'x', '/', '^', '!'
+    std::int64_t first;
+    std::int64_t second;  // Only used for binary operations
+    char operation;       // '+', '-', 'x', '/', '^', '!'
     bool valid;
 };
 
@@ -43,17 +44,23 @@ ParsedArgs parseArgs(int argc, char* argv[])
 {
     ParsedArgs result = {0, 0, '\0', false};
 
-    if (argc < 2 || argc > 4) return result;
+    if (argc < 2 || argc > 4)
+    {
+        return result;
+    }
 
     // Factorial
     if (argc == 3)
     {
-        double x = atof(argv[1]);
-        char op = argv[2][0];
+        int first = atoi(argv[1]);
+        char operation = argv[2][0];
 
-        if (op != '!' || x < 0 || floor(x) != x) return result;
+        if (operation != '!')
+        {
+            return result;
+        }
 
-        result.x = static_cast<int>(x);
+        result.first = first;
         result.operation = '!';
         result.valid = true;
         return result;
@@ -62,15 +69,18 @@ ParsedArgs parseArgs(int argc, char* argv[])
     // Binary operations
     if (argc == 4)
     {
-        int x = atoi(argv[1]);
-        int y = atoi(argv[3]);
-        char op = argv[2][0];
+        int first = atoi(argv[1]);
+        int second = atoi(argv[3]);
+        char operation = argv[2][0];
 
-        if (op != '+' && op != '-' && op != 'x' && op != '/' && op != '^') return result;
+        if (operation != '+' && operation != '-' && operation != 'x' && operation != '/' && operation != '^')
+        {
+            return result;
+        }
 
-        result.x = x;
-        result.y = y;
-        result.operation = op;
+        result.first = first;
+        result.second = second;
+        result.operation = operation;
         result.valid = true;
         return result;
     }
@@ -80,11 +90,14 @@ ParsedArgs parseArgs(int argc, char* argv[])
 
 bool checkParsedArgs(const ParsedArgs& args)
 {
-    if (!args.valid) return false;
+    if (!args.valid)
+    {
+        return false;
+    }
 
     if (args.operation == '!')
     {
-        if (args.x < 0)
+        if (args.first < 0)
         {
             puts("Error: factorial requires non-negative integer");
             return false;
@@ -92,7 +105,7 @@ bool checkParsedArgs(const ParsedArgs& args)
         return true;
     }
 
-    if (args.operation == '/' && args.y == 0)
+    if (args.operation == '/' && args.second == 0)
     {
         puts("Error: division by zero");
         return false;
@@ -101,46 +114,69 @@ bool checkParsedArgs(const ParsedArgs& args)
     return true;
 }
 
-std::uint64_t executeOperation(const ParsedArgs& args)
+mathlib::MathResult executeOperation(const ParsedArgs& args)
 {
     switch (args.operation)
     {
         case '+':
-            return mathlib::add(args.x, args.y);
+            return mathlib::add(args.first, args.second);
         case '-':
-            return mathlib::subtract(args.x, args.y);
+            return mathlib::subtract(args.first, args.second);
         case 'x':
-            return mathlib::multiply(args.x, args.y);
+            return mathlib::multiply(args.first, args.second);
         case '/':
-            return mathlib::divide(args.x, args.y);
+            return mathlib::divide(args.first, args.second);
         case '^':
-            return mathlib::power(args.x, args.y);
+            return mathlib::power(args.first, args.second);
         case '!':
-            return mathlib::factorial(args.x);
+            return mathlib::factorial(args.first);
         default:
-            return 0;
+            return {0, mathlib::MathError::InvalidArgument};
     }
+}
+
+const char* errorToString(mathlib::MathError error)
+{
+    switch (error)
+    {
+        case mathlib::MathError::None:
+            return "No error";
+        case mathlib::MathError::DivisionByZero:
+            return "Division by zero";
+        case mathlib::MathError::InvalidArgument:
+            return "Invalid argument, please check --help";
+        case mathlib::MathError::NegativeFactorial:
+            return "Negative factorial";
+        default:
+            return "Unknown error";
+    }
+}
+
+void printResult(const mathlib::MathResult& result)
+{
+    if (result.error != mathlib::MathError::None)
+    {
+        printf("Error: %s\n", errorToString(result.error));
+        return;
+    }
+
+    printf("Result: %" PRId64 "\n", result.value);
 }
 
 int runner(int argc, char* argv[])
 {
     char* prog = argv[0];
 
-    if (argc == 2 && (argv[1][0] == '-' && (argv[1][1] == 'h' || argv[1][1] == '-')))
+    if ((argc == 2 && argv[1][0] == '-' &&
+         ((argv[1][1] == 'h' && argv[1][2] == '\0') || (argv[1][1] == '-' && argv[1][2] == 'h' && argv[1][3] == 'e' &&
+                                                        argv[1][4] == 'l' && argv[1][5] == 'p' && argv[1][6] == '\0'))))
     {
         printHelp(prog);
         return 0;
     }
 
     ParsedArgs parsedArgs = parseArgs(argc, argv);
-    if (!checkParsedArgs(parsedArgs))
-    {
-        printf("Usage: %s <number1> <operation> <number2> or %s <number> !\n", prog, prog);
-        return 1;
-    }
-
-    std::uint64_t result = executeOperation(parsedArgs);
-    printf("Result: %llu\n", result);
-
+    mathlib::MathResult result = executeOperation(parsedArgs);
+    printResult(result);
     return 0;
 }

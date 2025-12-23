@@ -15,8 +15,6 @@ WarningsAsErrors: 'clang-analyzer-*'
 
 HeaderFilterRegex: '.*'
 
-AnalyzeTemporaryDtors: true
-
 FormatStyle: file
 
 CheckOptions:
