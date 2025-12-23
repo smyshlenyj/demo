@@ -54,15 +54,9 @@ ParsedArgs parseArgs(int argc, char* argv[])
     {
         int first = atoi(argv[1]);
         char operation = argv[2][0];
-
-        if (operation != '!')
-        {
-            return result;
-        }
-
         result.first = first;
-        result.operation = '!';
-        result.valid = true;
+        result.operation = operation;
+        // result.valid = true;
         return result;
     }
 
@@ -73,45 +67,32 @@ ParsedArgs parseArgs(int argc, char* argv[])
         int second = atoi(argv[3]);
         char operation = argv[2][0];
 
-        if (operation != '+' && operation != '-' && operation != 'x' && operation != '/' && operation != '^')
-        {
-            return result;
-        }
-
         result.first = first;
         result.second = second;
         result.operation = operation;
-        result.valid = true;
+        // result.valid = true;
         return result;
     }
 
     return result;
 }
 
-bool checkParsedArgs(const ParsedArgs& args)
+void checkParsedArgs(ParsedArgs& args)
 {
-    if (!args.valid)
+    if (args.operation == '\0')
     {
-        return false;
+        args.valid = false;
+        return;
     }
 
-    if (args.operation == '!')
+    if (args.operation != '+' && args.operation != '-' && args.operation != 'x' && args.operation != '/' &&
+        args.operation != '^' && args.operation != '!')
     {
-        if (args.first < 0)
-        {
-            puts("Error: factorial requires non-negative integer");
-            return false;
-        }
-        return true;
+        args.valid = false;
+        return;
     }
 
-    if (args.operation == '/' && args.second == 0)
-    {
-        puts("Error: division by zero");
-        return false;
-    }
-
-    return true;
+    args.valid = true;
 }
 
 mathlib::MathResult executeOperation(const ParsedArgs& args)
@@ -140,15 +121,15 @@ const char* errorToString(mathlib::MathError error)
     switch (error)
     {
         case mathlib::MathError::None:
-            return "No error";
+            return "no error";
         case mathlib::MathError::DivisionByZero:
-            return "Division by zero";
+            return "division by zero";
         case mathlib::MathError::InvalidArgument:
-            return "Invalid argument, please check --help";
+            return "invalid argument, please check --help";
         case mathlib::MathError::NegativeFactorial:
-            return "Negative factorial";
+            return "negative factorial";
         default:
-            return "Unknown error";
+            return "unknown error";
     }
 }
 
@@ -176,6 +157,12 @@ int runner(int argc, char* argv[])
     }
 
     ParsedArgs parsedArgs = parseArgs(argc, argv);
+    checkParsedArgs(parsedArgs);
+    if (!parsedArgs.valid)
+    {
+        printf("Error: invalid arguments\n");
+        return 1;
+    }
     mathlib::MathResult result = executeOperation(parsedArgs);
     printResult(result);
     return 0;

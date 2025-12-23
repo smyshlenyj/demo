@@ -1,4 +1,4 @@
-#include "../include/runner.h"
+#include "runner.h"
 
 int main(int argc, char* argv[])
 {
