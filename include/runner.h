@@ -1,7 +1,20 @@
 #pragma once
-#include "mathlib.h"
 
-int runner(int argc, char* argv[]);
-void printHelp(const char* prog);
-void printResult(const mathlib::MathResult& result);
-const char* errorToString(mathlib::MathError error);
+#include <memory>
+#include <string>
+#include <spdlog/logger.h>
+
+#include "parsedArgs.h"
+
+class Runner
+{
+   private:
+    std::shared_ptr<spdlog::logger> log;
+
+   public:
+    Runner(const std::shared_ptr<spdlog::logger>& logger) : log(logger)
+    {
+    }
+
+    void run(const std::string& inputPath);
+};

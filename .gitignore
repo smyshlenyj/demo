@@ -7,6 +7,13 @@ Makefile
 *.o
 *.a
 *.so
+app.log
 
 # VS Code
 .vscode/
+
+# Temporary testing
+Testing/Temporary/
+
+# GTest binaries
+tests/

@@ -1,63 +1,130 @@
 cmake_minimum_required(VERSION 3.16)
 project(calc VERSION 0.1.0 LANGUAGES CXX)
 
-include(GNUInstallDirs) # Provides CMAKE_INSTALL_*DIR variables for portable install paths
+option(BUILD_TESTS "Build unit tests" ON)
+option(ENABLE_CLANG_TIDY "Enable clang-tidy checks" ON)
 
-# Set C++ standard
+include(GNUInstallDirs)
+
+# --------------------
+# C++ settings
+# --------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS ON)
 
-# Default build type
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
-# Export compile commands for tools like clang-tidy, clangd, etc.
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Enable compiler warnings for GCC / Clang
+# warnings
 add_compile_options(-Wall -Wextra -Wpedantic)
 
-# clang-tidy setup
-option(ENABLE_CLANG_TIDY "Enable clang-tidy checks" ON)
-
+# --------------------
+# clang-tidy (TARGET-BASED, NOT GLOBAL)
+# --------------------
 if(ENABLE_CLANG_TIDY)
     find_program(CLANG_TIDY NAMES clang-tidy clang-tidy-18 clang-tidy-17)
 
     if(CLANG_TIDY)
         message(STATUS "clang-tidy found: ${CLANG_TIDY}")
-
-        # Apply clang-tidy to all C++ targets created after this point
-        set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY}")
     endif()
 endif()
 
-# Include FetchContent module to download external libraries
+# --------------------
+# Dependencies (FetchContent)
+# --------------------
 include(FetchContent)
 
-# Declare mathlib as an external dependency
+# mathlib
 FetchContent_Declare(
     mathlib
-    GIT_REPOSITORY https://github.com/smyshlenyj/mathlib.git # URL of the mathlib repository
-    GIT_TAG main # Branch or tag to use
+    GIT_REPOSITORY https://github.com/smyshlenyj/mathlib.git
+    GIT_TAG main
 )
-
-# Download and make mathlib available as a CMake target
 FetchContent_MakeAvailable(mathlib)
 
-# Create main executable
-add_executable(calc src/main.cpp src/runner.cpp)
+# nlohmann/json
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(json)
 
-# Include your project's headers
+# spdlog
+FetchContent_Declare(
+    spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.17.0
+)
+FetchContent_MakeAvailable(spdlog)
+
+# googletest
+FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(googletest)
+
+# --------------------
+# Main executable
+# --------------------
+add_executable(calc
+    src/main.cpp
+    src/runner.cpp
+    src/parser.cpp
+    src/checker.cpp
+    src/calculator.cpp
+    src/printer.cpp
+    src/loggerWrapper.cpp
+)
+
+# my includes
 target_include_directories(calc
     PRIVATE ${PROJECT_SOURCE_DIR}/include
 )
 
-# Link with mathlib
-target_link_libraries(calc PRIVATE math)
+# third party include as SYSTEM, in order to supress warnings
+target_include_directories(calc SYSTEM PRIVATE
+    ${mathlib_SOURCE_DIR}/include/
+    ${json_SOURCE_DIR}/include/
+    ${spdlog_SOURCE_DIR}/include/
+)
 
-# Install executable
+# link libraries
+target_link_libraries(calc
+    PRIVATE
+    math
+    spdlog
+    nlohmann_json::nlohmann_json
+)
+
+# clang-tidy for my code not for third-party libs
+if(CLANG_TIDY)
+    set_target_properties(calc PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY}")
+endif()
+
+# --------------------
+# Disable clang-tidy for tests and third-party
+# --------------------
+set_target_properties(gtest PROPERTIES CXX_CLANG_TIDY "")
+set_target_properties(gtest_main PROPERTIES CXX_CLANG_TIDY "")
+
+# --------------------
+# Installation
+# --------------------
 install(TARGETS calc
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# --------------------
+# Tests
+# --------------------
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

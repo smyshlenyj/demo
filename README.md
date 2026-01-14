@@ -1,57 +1,131 @@
 # Calc
 
-calc is a simple CLI-calculator.
+**Calc** — простой CLI-калькулятор с поддержкой базовых операций и факториала.  
+Ввод осуществляется через JSON-файл, результаты логируются и выводятся в консоль.
+
+---
 
 ## Usage
+
+```bash
+calc <input.json>
 ```
-calc <number1> <operation> <number2>
-calc <number> !
-calc --help
+
+JSON Format
+```json
+{
+  "firstOperand": 5,
+  "secondOperand": 3,
+  "operation": "+"
+}
 ```
+**firstOperand** — целое число (int64_t)
+
+**secondOperand** — целое число (int64_t, опционально для факториала !)
+
+**operation** — один из поддерживаемых символов: +, -, x, /, ^, !
+
+Для факториала используется только firstOperand.
+
+**Notes:**
+
+Деление на ноль — ошибка.
+
+Факториал определяется только для неотрицательных чисел.
+
+Поля JSON должны быть корректными, иначе приложение выбросит исключение и завершится с ошибкой.
 
 ## Operations
+**Symbol Description**
+```text
++	Addition
+-	Subtraction
+x	Multiplication
+/	Division
+^	Power (a ^ b)
+!	Factorial (n!)
 ```
-+   addition
--   subtraction
-x   multiplication
-/   division
-^   power (a ^ b)
-!   factorial (n!)
-```
-
-## Notes
-- For factorial, only one operand is used
-- Factorial is defined for non-negative integers
-- Division by zero is an error
-
-## Examples
-```
-calc 2 + 3
-calc 5 !
-calc 2 ^ 8
+# Examples
+```bash
+calc input.json
 ```
 
-## Build and Install
+input.json:
+```json
+{
+  "firstOperand": 5,
+  "secondOperand": 3,
+  "operation": "+"
+}
+```
 
-### Requirements
+Output:
+```text
+Result: 8
+```
 
-- CMake ≥ 3.16
-- C++ compiler with C++17 support
+Для факториала:
+```json
+{
+  "firstOperand": 5,
+  "operation": "!"
+}
+```
 
-### Build
+Output:
+```text
+Result: 120
+```
 
-From the project root:
+# Logging
 
-```sh
+Все события программы логируются через spdlog.
+
+Лог хранит:
+* Запуск и завершение калькулятора
+* Принятый JSON
+* Ошибки и исключения (например, деление на ноль, неверный JSON)
+* Ошибки и исключения дублируются в консоль.
+
+Пример уровня логирования:
+
+**trace** — вход в методы
+
+**info** — успешное завершение операций
+
+**error** — ошибки обработки JSON или валидации
+
+**critical** — фатальные ошибки
+
+
+# Unit Tests
+Используется Google Test (gtest) для тестирования всех операций.
+
+Тесты покрывают:
+* Все базовые арифметические операции
+* Деление на ноль
+* Факториал и возведение в степень
+
+##### Запуск тестов через CMake:
+
+```bash
+cmake -B build
+cmake --build build
+ctest --output-on-failure
+```
+
+# Build and Install
+**Requirements:**
+* CMake ≥ 3.16
+* C++17 compiler
+
+**Build**
+```bash
 cmake -B build
 cmake --build build
 ```
-This will configure the project and build the calc executable in the build/ directory.
 
-### Install
-
-To install the binary into the system (default prefix: /usr/local):
-
-```sh
+**Install**
+```bash
 sudo cmake --build build --target install
 ```
