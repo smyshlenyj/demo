@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "loggerWrapper.h"
-#include "runner.h"
+#include "loggerWrapper.hpp"
+#include "runner.hpp"
 
 int main(int argc, char* argv[])
 {

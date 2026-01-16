@@ -15,5 +15,5 @@ app.log
 # Temporary testing
 Testing/Temporary/
 
-# GTest binaries
-tests/
+# Old cpp
+exclude/
