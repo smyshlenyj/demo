@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "calculator.hpp"
+#include "parser.hpp"
+#include "checker.hpp"
 #include <memory>
 #include "loggerWrapper.hpp"
 
@@ -14,12 +16,42 @@ class CalculatorTest : public ::testing::Test
     void SetUp() override
     {
         LoggerWrapper::init();
-        logger = LoggerWrapper::get();  // возвращает std::shared_ptr<ILogger>
+        logger = LoggerWrapper::get();
     }
 
     Calculator makeCalculator()
     {
-        return Calculator(logger);  // теперь тип правильный
+        return Calculator(logger);
+    }
+};
+
+// ---------------------------
+// Fixture for Parser
+// ---------------------------
+class ParserTest : public ::testing::Test
+{
+   protected:
+    std::shared_ptr<ILogger> logger;
+
+    void SetUp() override
+    {
+        LoggerWrapper::init();
+        logger = LoggerWrapper::get();
+    }
+};
+
+// ---------------------------
+// Fixture for Checker
+// ---------------------------
+class CheckerTest : public ::testing::Test
+{
+   protected:
+    std::shared_ptr<ILogger> logger;
+
+    void SetUp() override
+    {
+        LoggerWrapper::init();
+        logger = LoggerWrapper::get();
     }
 };
 
@@ -102,4 +134,37 @@ TEST_F(CalculatorTest, Power)
     std::int64_t result = calc.executeOperation(args);
 
     EXPECT_EQ(result, 16807);
+}
+
+TEST_F(ParserTest, InvalidJSON)
+{
+    Parser parser(logger);
+    EXPECT_THROW(parser.parse("{invalid json}"), ParseError);
+}
+
+// ---------------------------
+// Checker Tests
+// ---------------------------
+TEST_F(CheckerTest, ValidAddition)
+{
+    Checker checker(logger);
+    ParsedArgs args;
+    args.operation = '+';
+    EXPECT_NO_THROW(checker.checkParsedArgs(args));
+}
+
+TEST_F(CheckerTest, InvalidOperation)
+{
+    Checker checker(logger);
+    ParsedArgs args;
+    args.operation = '?';
+    EXPECT_THROW(checker.checkParsedArgs(args), ValidationError);
+}
+
+TEST_F(CheckerTest, MissingOperation)
+{
+    Checker checker(logger);
+    ParsedArgs args;
+    args.operation = '\0';
+    EXPECT_THROW(checker.checkParsedArgs(args), ValidationError);
 }

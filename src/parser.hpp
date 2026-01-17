@@ -3,7 +3,6 @@
 #include <string>
 #include <memory>
 #include <stdexcept>
-#include <fstream>
 #include <nlohmann/json.hpp>
 
 #include "parsedArgs.hpp"
@@ -21,19 +20,13 @@ class Parser
     {
     }
 
-    ParsedArgs parse(int argc, const std::string& path)
+    ParsedArgs parse(const std::string& jsonString)
     {
-        log_->trace("Entered Parser::parse with file: {}" + path);
+        log_->trace("Entered Parser::parse with JSON string: " + jsonString);
 
-        if (argc < 2)
+        if (jsonString.empty())
         {
-            log_->error("Input file path is not provided");
-        }
-
-        std::ifstream file(path);
-        if (!file.is_open())
-        {
-            std::string error = "Cannot open input file";
+            std::string error = "Error: Missing JSON argument. Usage: calc '<json_string>'";
             log_->error(error);
             throw ParseError(error);
         }
@@ -42,7 +35,7 @@ class Parser
 
         try
         {
-            file >> json;
+            json = nlohmann::json::parse(jsonString);
         }
         catch (const nlohmann::json::parse_error&)
         {
@@ -51,7 +44,7 @@ class Parser
             throw ParseError(error);
         }
 
-        log_->trace("Input JSON: {}" + json.dump());
+        log_->trace("Input JSON: " + json.dump());
         ParsedArgs result{};
 
         try

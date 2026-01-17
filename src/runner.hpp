@@ -2,8 +2,8 @@
 
 #include <memory>
 #include <string>
-#include <spdlog/logger.h>
 #include <stdexcept>
+#include <iostream>
 
 #include "parsedArgs.hpp"
 #include "parser.hpp"
@@ -20,7 +20,7 @@ class Runner
     {
     }
 
-    void run(int argc, const std::string& inputPath)
+    void run(const std::string& jsonString)
     {
         try
         {
@@ -34,7 +34,7 @@ class Runner
             log_->trace("Entered Runner::run");
 
             Parser parser(log_);
-            auto parsedArgs = parser.parse(argc, inputPath);
+            auto parsedArgs = parser.parse(jsonString);
 
             Checker checker(log_);
             checker.checkParsedArgs(parsedArgs);

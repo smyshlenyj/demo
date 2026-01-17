@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <stdexcept>
+#include <cstdlib>
+#include <string>
 
 #include "mathlib.hpp"
 #include "parsedArgs.hpp"

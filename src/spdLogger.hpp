@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include "ILogger.hpp"
 #include <spdlog/logger.h>
 
