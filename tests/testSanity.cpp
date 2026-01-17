@@ -32,10 +32,9 @@ TEST_F(CalculatorTest, Addition)
     args.second = 3;
     args.operation = '+';
 
-    mathlib::MathResult result = calc.executeOperation(args);
+    std::int64_t result = calc.executeOperation(args);
 
-    EXPECT_EQ(result.value, 5);
-    EXPECT_EQ(result.error, mathlib::MathError::None);
+    EXPECT_EQ(result, 5);
 }
 
 TEST_F(CalculatorTest, DivisionByZero)
@@ -47,7 +46,7 @@ TEST_F(CalculatorTest, DivisionByZero)
     args.second = 0;
     args.operation = '/';
 
-    EXPECT_THROW(calc.executeOperation(args), CalculationError);
+    EXPECT_THROW(calc.executeOperation(args), std::invalid_argument);
 }
 
 TEST_F(CalculatorTest, Subtract)
@@ -59,10 +58,9 @@ TEST_F(CalculatorTest, Subtract)
     args.second = 99;
     args.operation = '-';
 
-    mathlib::MathResult result = calc.executeOperation(args);
+    std::int64_t result = calc.executeOperation(args);
 
-    EXPECT_EQ(result.value, 123);
-    EXPECT_EQ(result.error, mathlib::MathError::None);
+    EXPECT_EQ(result, 123);
 }
 
 TEST_F(CalculatorTest, Multiply)
@@ -74,10 +72,9 @@ TEST_F(CalculatorTest, Multiply)
     args.second = 5;
     args.operation = 'x';
 
-    mathlib::MathResult result = calc.executeOperation(args);
+    std::int64_t result = calc.executeOperation(args);
 
-    EXPECT_EQ(result.value, 35);
-    EXPECT_EQ(result.error, mathlib::MathError::None);
+    EXPECT_EQ(result, 35);
 }
 
 TEST_F(CalculatorTest, Factorial)
@@ -88,10 +85,9 @@ TEST_F(CalculatorTest, Factorial)
     args.first = 11;
     args.operation = '!';
 
-    mathlib::MathResult result = calc.executeOperation(args);
+    std::int64_t result = calc.executeOperation(args);
 
-    EXPECT_EQ(result.value, 39916800);
-    EXPECT_EQ(result.error, mathlib::MathError::None);
+    EXPECT_EQ(result, 39916800);
 }
 
 TEST_F(CalculatorTest, Power)
@@ -103,8 +99,7 @@ TEST_F(CalculatorTest, Power)
     args.second = 5;
     args.operation = '^';
 
-    mathlib::MathResult result = calc.executeOperation(args);
+    std::int64_t result = calc.executeOperation(args);
 
-    EXPECT_EQ(result.value, 16807);
-    EXPECT_EQ(result.error, mathlib::MathError::None);
+    EXPECT_EQ(result, 16807);
 }

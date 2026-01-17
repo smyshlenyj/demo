@@ -20,9 +20,14 @@ class Parser
     {
     }
 
-    ParsedArgs parse(const std::string& path)
+    ParsedArgs parse(int argc, const std::string& path)
     {
         log->trace("Entered Parser::parse with file: {}", path);
+
+        if (argc < 2)
+        {
+            log->error("Input file path is not provided");
+        }
 
         std::ifstream file(path);
         if (!file.is_open())

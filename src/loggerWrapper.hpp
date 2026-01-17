@@ -43,11 +43,6 @@ class LoggerWrapper
             {
                 std::cerr << "Logger init failed: " << e.what() << "\n";
             }
-
-            catch (const std::exception& e)
-            {
-                std::cerr << "Logger init failed: " << e.what() << "\n";
-            }
         }
     }
     static std::shared_ptr<spdlog::logger> get()

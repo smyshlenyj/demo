@@ -75,12 +75,6 @@ FetchContent_MakeAvailable(googletest)
 # --------------------
 add_executable(calc
     src/main.cpp
-    src/runner.hpp
-    src/parser.hpp
-    src/checker.hpp
-    src/calculator.hpp
-    src/printer.hpp
-    src/loggerWrapper.hpp
 )
 
 # my includes

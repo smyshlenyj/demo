@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <spdlog/logger.h>
+#include <stdexcept>
 
 #include "parsedArgs.hpp"
 #include "parser.hpp"
@@ -13,25 +14,57 @@
 class Runner
 {
    public:
-    Runner(const std::shared_ptr<spdlog::logger>& logger) : log(logger)
+    Runner()
     {
     }
 
-    void run(const std::string& inputPath)
+    void run(int argc, const std::string& inputPath)
     {
-        log->trace("Entered Runner::run");
+        try
+        {
+            LoggerWrapper::init();
+            auto log = LoggerWrapper::get();
+            log->info("=========================");
+            log->info("Calc started");
+            log->trace("Entered Runner::run");
 
-        Parser parser(log);
-        auto parsedArgs = parser.parse(inputPath);
+            Parser parser(log);
+            auto parsedArgs = parser.parse(argc, inputPath);
 
-        Checker checker(log);
-        checker.checkParsedArgs(parsedArgs);
+            Checker checker(log);
+            checker.checkParsedArgs(parsedArgs);
 
-        Calculator calculator(log);
-        auto result = calculator.executeOperation(parsedArgs);
+            Calculator calculator(log);
+            auto result = calculator.executeOperation(parsedArgs);
 
-        Printer printer(log);
-        printer.printResult(result);
+            Printer printer(log);
+            printer.printResult(parsedArgs, result);
+
+            log->info("Calc finished successfully");
+        }
+
+        catch (const ParseError& e)
+        {
+            log->error("Parse error: {}", e.what());
+            std::cerr << "Error: " << e.what() << "\n";
+        }
+
+        catch (const ValidationError& e)
+        {
+            log->error("Validation error: {}", e.what());
+            std::cerr << "Error: " << e.what() << "\n";
+        }
+
+        catch (const std::invalid_argument& e)  // mathlib exceptions
+        {
+            log->error("Calculation error: {}", e.what());
+            std::cerr << "Error: " << e.what() << "\n";
+        }
+
+        catch (...)
+        {
+            log->error("Unknown exception");
+        }
     }
 
    private:
