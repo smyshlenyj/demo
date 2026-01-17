@@ -3,10 +3,11 @@
 #include <string>
 #include <memory>
 #include <stdexcept>
-#include <spdlog/logger.h>
 #include <fstream>
 #include <nlohmann/json.hpp>
+
 #include "parsedArgs.hpp"
+#include "ILogger.hpp"
 
 struct ParseError : std::runtime_error
 {
@@ -16,24 +17,24 @@ struct ParseError : std::runtime_error
 class Parser
 {
    public:
-    Parser(const std::shared_ptr<spdlog::logger>& logger) : log(logger)
+    Parser(std::shared_ptr<ILogger> log) : log_(std::move(log))
     {
     }
 
     ParsedArgs parse(int argc, const std::string& path)
     {
-        log->trace("Entered Parser::parse with file: {}", path);
+        log_->trace("Entered Parser::parse with file: {}" + path);
 
         if (argc < 2)
         {
-            log->error("Input file path is not provided");
+            log_->error("Input file path is not provided");
         }
 
         std::ifstream file(path);
         if (!file.is_open())
         {
             std::string error = "Cannot open input file";
-            log->error(error);
+            log_->error(error);
             throw ParseError(error);
         }
 
@@ -46,11 +47,11 @@ class Parser
         catch (const nlohmann::json::parse_error&)
         {
             std::string error = "Invalid JSON format";
-            log->error(error);
+            log_->error(error);
             throw ParseError(error);
         }
 
-        log->trace("Input JSON: {}", json.dump());
+        log_->trace("Input JSON: {}" + json.dump());
         ParsedArgs result{};
 
         try
@@ -62,7 +63,7 @@ class Parser
             if (operation.size() != 1)
             {
                 std::string error = "Operation must be a single character";
-                log->error(error);
+                log_->error(error);
                 throw ParseError(error);
             }
 
@@ -72,7 +73,7 @@ class Parser
         catch (const nlohmann::json::exception&)
         {
             std::string error = "Invalid or missing JSON fields";
-            log->error(error);
+            log_->error(error);
             throw ParseError(error);
         }
 
@@ -80,5 +81,5 @@ class Parser
     }
 
    private:
-    std::shared_ptr<spdlog::logger> log;
+    std::shared_ptr<ILogger> log_;
 };

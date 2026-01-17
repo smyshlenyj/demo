@@ -2,21 +2,21 @@
 #include <cinttypes>  // for PRId64
 #include <cstdio>
 
-#include "loggerWrapper.hpp"
+#include "ILogger.hpp"
 
 class Printer
 {
    public:
-    Printer(const std::shared_ptr<spdlog::logger>& logger) : log(logger)
+    Printer(std::shared_ptr<ILogger> log) : log_(std::move(log))
     {
     }
 
     void printResult(ParsedArgs& args, std::int64_t result)
     {
-        log->trace("Entered Printer::printResult");
+        log_->trace("Entered Printer::printResult");
         std::cout << args.first << " " << args.operation << " " << args.second << " = " << result << '\n';
     }
 
    private:
-    std::shared_ptr<spdlog::logger> log;
+    std::shared_ptr<ILogger> log_;
 };

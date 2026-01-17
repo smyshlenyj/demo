@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "calculator.hpp"
 #include <memory>
-#include <spdlog/sinks/null_sink.h>
+#include "loggerWrapper.hpp"
 
 // ---------------------------
 // Fixture for Calculator
@@ -9,17 +9,17 @@
 class CalculatorTest : public ::testing::Test
 {
    protected:
-    std::shared_ptr<spdlog::logger> logger;
+    std::shared_ptr<ILogger> logger;
 
     void SetUp() override
     {
-        auto null_sink = std::make_shared<spdlog::sinks::null_sink_mt>();
-        logger = std::make_shared<spdlog::logger>("test_logger", null_sink);
+        LoggerWrapper::init();
+        logger = LoggerWrapper::get();  // возвращает std::shared_ptr<ILogger>
     }
 
     Calculator makeCalculator()
     {
-        return Calculator(logger);
+        return Calculator(logger);  // теперь тип правильный
     }
 };
 

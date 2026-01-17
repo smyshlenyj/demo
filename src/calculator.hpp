@@ -5,18 +5,18 @@
 
 #include "mathlib.hpp"
 #include "parsedArgs.hpp"
-#include "loggerWrapper.hpp"
+#include "ILogger.hpp"
 
 class Calculator
 {
    public:
-    Calculator(const std::shared_ptr<spdlog::logger>& logger) : log(logger)
+    Calculator(std::shared_ptr<ILogger> log) : log_(std::move(log))
     {
     }
 
     std::int64_t executeOperation(const ParsedArgs& args)
     {
-        log->trace("Entered Calculator::executeOperation");
+        log_->trace("Entered Calculator::executeOperation");
 
         std::int64_t result;
 
@@ -41,7 +41,7 @@ class Calculator
                 result = mathlib::factorial(args.first);
                 break;
             default:
-                log->critical("Unexpected operation reached Calculator: {}", args.operation);
+                log_->critical(std::string("Unexpected operation reached Calculator: ") + args.operation);
                 std::terminate();  // last guard
         }
 
@@ -49,5 +49,5 @@ class Calculator
     }
 
    private:
-    std::shared_ptr<spdlog::logger> log;
+    std::shared_ptr<ILogger> log_;
 };

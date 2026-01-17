@@ -10,6 +10,8 @@
 #include "checker.hpp"
 #include "calculator.hpp"
 #include "printer.hpp"
+#include "ILogger.hpp"
+#include "loggerWrapper.hpp"
 
 class Runner
 {
@@ -22,51 +24,54 @@ class Runner
     {
         try
         {
+            // Инициализация spdlog
             LoggerWrapper::init();
-            auto log = LoggerWrapper::get();
-            log->info("=========================");
-            log->info("Calc started");
-            log->trace("Entered Runner::run");
 
-            Parser parser(log);
+            // Создаём адаптер ILogger поверх spdlog
+            log_ = LoggerWrapper::get();
+            log_->info("=========================");
+            log_->info("Calc started");
+            log_->trace("Entered Runner::run");
+
+            Parser parser(log_);
             auto parsedArgs = parser.parse(argc, inputPath);
 
-            Checker checker(log);
+            Checker checker(log_);
             checker.checkParsedArgs(parsedArgs);
 
-            Calculator calculator(log);
+            Calculator calculator(log_);
             auto result = calculator.executeOperation(parsedArgs);
 
-            Printer printer(log);
+            Printer printer(log_);
             printer.printResult(parsedArgs, result);
 
-            log->info("Calc finished successfully");
+            log_->info("Calc finished successfully");
         }
 
         catch (const ParseError& e)
         {
-            log->error("Parse error: {}", e.what());
+            log_->error(std::string("Parse error: ") + e.what());
             std::cerr << "Error: " << e.what() << "\n";
         }
 
         catch (const ValidationError& e)
         {
-            log->error("Validation error: {}", e.what());
+            log_->error(std::string("Validation error: ") + e.what());
             std::cerr << "Error: " << e.what() << "\n";
         }
 
         catch (const std::invalid_argument& e)  // mathlib exceptions
         {
-            log->error("Calculation error: {}", e.what());
+            log_->error(std::string("Calculation error: ") + e.what());
             std::cerr << "Error: " << e.what() << "\n";
         }
 
         catch (...)
         {
-            log->error("Unknown exception");
+            log_->error("Unknown exception");
         }
     }
 
    private:
-    std::shared_ptr<spdlog::logger> log;
+    std::shared_ptr<ILogger> log_;
 };

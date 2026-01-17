@@ -6,10 +6,12 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <fstream>
-
 #include <unistd.h>
 #include <limits.h>
 #include <iostream>
+
+#include "spdLogger.hpp"
+#include "ILogger.hpp"
 
 class LoggerWrapper
 {
@@ -41,13 +43,21 @@ class LoggerWrapper
 
             catch (const spdlog::spdlog_ex& e)
             {
+                loggerInstance->error("Logger init failed");
                 std::cerr << "Logger init failed: " << e.what() << "\n";
             }
         }
     }
-    static std::shared_ptr<spdlog::logger> get()
+
+    static std::shared_ptr<ILogger> get()
     {
-        return spdlog::get("app");
+        static std::shared_ptr<ILogger> instance = []()
+        {
+            auto spd = spdlog::get("app");
+            if (!spd) throw std::runtime_error("Logger not initialized");
+            return std::make_shared<SpdLogger>(spd);
+        }();
+        return instance;
     }
 
    private:

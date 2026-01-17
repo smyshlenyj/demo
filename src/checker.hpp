@@ -4,7 +4,7 @@
 #include <stdexcept>
 
 #include "parsedArgs.hpp"
-#include "loggerWrapper.hpp"
+#include "ILogger.hpp"
 
 struct ValidationError : std::logic_error
 {
@@ -14,13 +14,13 @@ struct ValidationError : std::logic_error
 class Checker
 {
    public:
-    Checker(const std::shared_ptr<spdlog::logger>& logger) : log(logger)
+    Checker(std::shared_ptr<ILogger> log) : log_(std::move(log))
     {
     }
 
     void checkParsedArgs(const ParsedArgs& args)
     {
-        log->trace("Entered Checker::checkParsedArgs");
+        log_->trace("Entered Checker::checkParsedArgs");
 
         if (args.operation == '\0') throw ValidationError("Operation is missing");
 
@@ -39,5 +39,5 @@ class Checker
     }
 
    private:
-    std::shared_ptr<spdlog::logger> log;
+    std::shared_ptr<ILogger> log_;
 };
