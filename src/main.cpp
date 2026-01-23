@@ -1,6 +1,9 @@
-#include "runner.h"
+#include "runner.hpp"
 
 int main(int argc, char* argv[])
 {
-    return runner(argc, argv);
+    Runner runner;
+    runner.run(argc < 2 ? "" : argv[1]);
+
+    return 0;
 }
