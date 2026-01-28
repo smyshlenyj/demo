@@ -2,12 +2,13 @@
 
 #include <memory>
 #include <stdexcept>
-#include <cstdlib>
 #include <string>
+#include <cstdint>
 
 #include "mathlib.hpp"
 #include "parsedArgs.hpp"
 #include "ILogger.hpp"
+#include "cacheRecord.hpp"
 
 class Calculator
 {
@@ -44,12 +45,30 @@ class Calculator
                 break;
             default:
                 log_->critical(std::string("Unexpected operation reached Calculator: ") + args.operation);
-                std::terminate();  // last guard
+                std::terminate();
         }
+
+        // fake workload to demonstrate perf
+        burner();
 
         return result;
     }
 
    private:
+    static void burner()
+    {
+        volatile std::uint64_t sum = 0;
+
+        for (std::uint64_t i = 0; i < 200'000'000ULL; ++i)
+        {
+            sum += i;
+        }
+
+        // options to prevent optimization
+        // asm volatile("" : : "r"(sum) : "memory");
+
+        // std::cout << "Burner sum: " << sum << "\n";
+    }
+
     std::shared_ptr<ILogger> log_;
 };
