@@ -1,5 +1,6 @@
 # CMake
 /build/
+/build-perf/
 /CMakeFiles/
 /CMakeCache.txt
 /*.cmake

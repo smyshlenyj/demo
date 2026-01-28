@@ -17,6 +17,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 endif()
 
+# --------------------
+# Perf-friendly flags для RelWithDebInfo
+# --------------------
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-omit-frame-pointer -fno-optimize-sibling-calls")
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # warnings
@@ -70,6 +75,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
+# Postgres + libpq
+find_package(PostgreSQL REQUIRED)
+
+if(PostgreSQL_FOUND)
+    message(STATUS "PostgreSQL found: include=${PostgreSQL_INCLUDE_DIRS}, lib=${PostgreSQL_LIBRARIES}")
+else()
+    message(FATAL_ERROR "PostgreSQL not found")
+endif()
+
 # --------------------
 # Main executable
 # --------------------
@@ -87,6 +101,7 @@ target_include_directories(calc SYSTEM PRIVATE
     ${mathlib_SOURCE_DIR}/include/
     ${json_SOURCE_DIR}/include/
     ${spdlog_SOURCE_DIR}/include/
+    ${PostgreSQL_INCLUDE_DIRS} # путь к libpq-fe.h
 )
 
 # link libraries
@@ -95,6 +110,7 @@ target_link_libraries(calc
     math
     spdlog
     nlohmann_json::nlohmann_json
+    PostgreSQL::PostgreSQL
 )
 
 # clang-tidy for my code not for third-party libs
