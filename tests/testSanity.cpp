@@ -12,6 +12,7 @@ class CalculatorTest : public ::testing::Test
 {
    protected:
     std::shared_ptr<ILogger> logger;
+    std::vector<CacheRecord> warm;
 
     void SetUp() override
     {

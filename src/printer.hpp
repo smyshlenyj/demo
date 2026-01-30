@@ -1,6 +1,8 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
+
 #include "ILogger.hpp"
 #include "parsedArgs.hpp"
 
