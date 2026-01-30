@@ -1,24 +1,47 @@
 #pragma once
+
 #include "IDatabase.hpp"
 #include <libpq-fe.h>
-#include <iostream>
+
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 struct PostgresDataBaseError : std::runtime_error
 {
     using std::runtime_error::runtime_error;
 };
 
+struct PGconnDeleter
+{
+    void operator()(PGconn* connection) const noexcept
+    {
+        if (connection != nullptr) PQfinish(connection);
+    }
+};
+
+struct PGresultDeleter
+{
+    void operator()(PGresult* result) const noexcept
+    {
+        if (result != nullptr) PQclear(result);
+    }
+};
+
+using pgConnPtr = std::unique_ptr<PGconn, PGconnDeleter>;
+using pgResultPtr = std::unique_ptr<PGresult, PGresultDeleter>;
+
 class PostgresDatabase : public IDatabase
 {
    public:
-    PostgresDatabase(const std::string& connInfo, std::shared_ptr<ILogger> log) : log_(std::move(log))
+    PostgresDatabase(const std::string& connInfo, std::shared_ptr<ILogger> log)
+        : log_(std::move(log)), conn_(PQconnectdb(connInfo.c_str()))
     {
-        conn_ = PQconnectdb(connInfo.c_str());
-        if (PQstatus(conn_) != CONNECTION_OK)
+        if (!conn_ || PQstatus(conn_.get()) != CONNECTION_OK)
         {
-            std::string err = PQerrorMessage(conn_);
-            PQfinish(conn_);
+            std::string err = conn_ ? PQerrorMessage(conn_.get()) : "PQconnectdb returned nullptr";
+
             std::string error = "PostgreSQL connection failed: " + err;
             log_->error(error);
             throw PostgresDataBaseError(error);
@@ -27,41 +50,36 @@ class PostgresDatabase : public IDatabase
         log_->info("Connected to PostgreSQL successfully");
     }
 
-    ~PostgresDatabase() override
-    {
-        if (conn_ != nullptr) PQfinish(conn_);
-    }
+    ~PostgresDatabase() override = default;
 
     void execute(const std::string& sql) override
     {
-        PGresult* res = PQexec(conn_, sql.c_str());
-        if (PQresultStatus(res) != PGRES_COMMAND_OK)
-        {
-            std::string err = PQerrorMessage(conn_);
-            PQclear(res);
+        pgResultPtr res(PQexec(conn_.get(), sql.c_str()));
 
+        if (!res || PQresultStatus(res.get()) != PGRES_COMMAND_OK)
+        {
+            std::string err = PQerrorMessage(conn_.get());
             std::string error = "SQL execute failed: " + err;
             log_->error(error);
             throw PostgresDataBaseError(error);
         }
-        PQclear(res);
     }
 
     std::vector<QueryResultRow> select(const std::string& sql) override
     {
-        PGresult* res = PQexec(conn_, sql.c_str());
-        if (PQresultStatus(res) != PGRES_TUPLES_OK)
-        {
-            std::string err = PQerrorMessage(conn_);
-            PQclear(res);
+        pgResultPtr res(PQexec(conn_.get(), sql.c_str()));
 
+        if (!res || PQresultStatus(res.get()) != PGRES_TUPLES_OK)
+        {
+            std::string err = PQerrorMessage(conn_.get());
             std::string error = "SQL select failed: " + err;
             log_->error(error);
             throw PostgresDataBaseError(error);
         }
 
-        int rows = PQntuples(res);
-        int cols = PQnfields(res);
+        const int rows = PQntuples(res.get());
+        const int cols = PQnfields(res.get());
+
         std::vector<QueryResultRow> result;
         result.reserve(rows);
 
@@ -69,19 +87,20 @@ class PostgresDatabase : public IDatabase
         {
             QueryResultRow row;
             row.columns.reserve(cols);
+
             for (int j = 0; j < cols; ++j)
             {
-                char* val = PQgetvalue(res, i, j);
-                row.columns.push_back(val != nullptr ? val : "");
+                char* value = PQgetvalue(res.get(), i, j);
+                row.columns.emplace_back(value != nullptr ? value : "");
             }
-            result.push_back(std::move(row));
+
+            result.emplace_back(std::move(row));
         }
 
-        PQclear(res);
         return result;
     }
 
    private:
     std::shared_ptr<ILogger> log_;
-    PGconn* conn_;
+    pgConnPtr conn_;
 };
