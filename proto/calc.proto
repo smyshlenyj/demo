@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package calc;
+
+enum Operation {
+  ADD = 0;
+  SUB = 1;
+  MUL = 2;
+  DIV = 3;
+  POW = 4;
+  FACT = 5;
+}
+
+message CalcRequest {
+  int64 a = 1;
+  int64 b = 2;  // для factorial b игнорируем
+  Operation op = 3;
+}
+
+message CalcResponse {
+  int64 result = 1;      // результат вычисления
+  string error = 2;       // если есть ошибка (например деление на 0)
+}
+
+// gRPC сервис
+service Calculator {
+  // RPC метод для выполнения операции
+  rpc Compute(CalcRequest) returns (CalcResponse);
+}

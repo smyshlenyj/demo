@@ -1,50 +1,15 @@
-#include <gtest/gtest.h>
-#include "calculator.hpp"
-#include "parser.hpp"
-#include "checker.hpp"
 #include <memory>
+#include <gtest/gtest.h>
+
+#include "calculator.hpp"
+#include "operation.hpp"
+#include "checker.hpp"
 #include "loggerWrapper.hpp"
 
 // ---------------------------
 // Fixture for Calculator
 // ---------------------------
 class CalculatorTest : public ::testing::Test
-{
-   protected:
-    std::shared_ptr<ILogger> logger;
-    std::vector<CacheRecord> warm;
-
-    void SetUp() override
-    {
-        LoggerWrapper::init();
-        logger = LoggerWrapper::get();
-    }
-
-    Calculator makeCalculator()
-    {
-        return Calculator(logger);
-    }
-};
-
-// ---------------------------
-// Fixture for Parser
-// ---------------------------
-class ParserTest : public ::testing::Test
-{
-   protected:
-    std::shared_ptr<ILogger> logger;
-
-    void SetUp() override
-    {
-        LoggerWrapper::init();
-        logger = LoggerWrapper::get();
-    }
-};
-
-// ---------------------------
-// Fixture for Checker
-// ---------------------------
-class CheckerTest : public ::testing::Test
 {
    protected:
     std::shared_ptr<ILogger> logger;
@@ -58,114 +23,56 @@ class CheckerTest : public ::testing::Test
 
 TEST_F(CalculatorTest, Addition)
 {
-    Calculator calc = makeCalculator();
-
-    ParsedArgs args;
-    args.first = 2;
-    args.second = 3;
-    args.operation = '+';
-
-    std::int64_t result = calc.executeOperation(args);
-
-    EXPECT_EQ(result, 5);
+    EXPECT_EQ(Calculator::executeOperation(int64_t(2), int64_t(3), Operation::ADD, logger), 5);
 }
 
 TEST_F(CalculatorTest, DivisionByZero)
 {
-    Calculator calc = makeCalculator();
-
-    ParsedArgs args;
-    args.first = 10;
-    args.second = 0;
-    args.operation = '/';
-
-    EXPECT_THROW(calc.executeOperation(args), std::invalid_argument);
+    EXPECT_THROW(Calculator::executeOperation(10, 0, Operation::DIV, logger), std::invalid_argument);
 }
 
 TEST_F(CalculatorTest, Subtract)
 {
-    Calculator calc = makeCalculator();
-
-    ParsedArgs args;
-    args.first = 222;
-    args.second = 99;
-    args.operation = '-';
-
-    std::int64_t result = calc.executeOperation(args);
-
-    EXPECT_EQ(result, 123);
+    EXPECT_EQ(Calculator::executeOperation(222, 99, Operation::SUB, logger), 123);
 }
 
 TEST_F(CalculatorTest, Multiply)
 {
-    Calculator calc = makeCalculator();
-
-    ParsedArgs args;
-    args.first = 7;
-    args.second = 5;
-    args.operation = 'x';
-
-    std::int64_t result = calc.executeOperation(args);
-
-    EXPECT_EQ(result, 35);
+    EXPECT_EQ(Calculator::executeOperation(7, 5, Operation::MUL, logger), 35);
 }
 
 TEST_F(CalculatorTest, Factorial)
 {
-    Calculator calc = makeCalculator();
-
-    ParsedArgs args;
-    args.first = 11;
-    args.operation = '!';
-
-    std::int64_t result = calc.executeOperation(args);
-
-    EXPECT_EQ(result, 39916800);
+    EXPECT_EQ(Calculator::executeOperation(11, 0, Operation::FACT, logger), 39916800);
 }
 
 TEST_F(CalculatorTest, Power)
 {
-    Calculator calc = makeCalculator();
-
-    ParsedArgs args;
-    args.first = 7;
-    args.second = 5;
-    args.operation = '^';
-
-    std::int64_t result = calc.executeOperation(args);
-
-    EXPECT_EQ(result, 16807);
-}
-
-TEST_F(ParserTest, InvalidJSON)
-{
-    Parser parser(logger);
-    EXPECT_THROW(parser.parse("{invalid json}"), ParseError);
+    EXPECT_EQ(Calculator::executeOperation(7, 5, Operation::POW, logger), 16807);
 }
 
 // ---------------------------
 // Checker Tests
 // ---------------------------
+class CheckerTest : public ::testing::Test
+{
+   protected:
+    std::shared_ptr<ILogger> logger;
+    void SetUp() override
+    {
+        LoggerWrapper::init();
+        logger = LoggerWrapper::get();
+    }
+};
+
 TEST_F(CheckerTest, ValidAddition)
 {
-    Checker checker(logger);
-    ParsedArgs args;
-    args.operation = '+';
-    EXPECT_NO_THROW(checker.checkParsedArgs(args));
+    Checker checker;
+    EXPECT_NO_THROW(checker.checkOperation(Operation::ADD, logger));
 }
 
 TEST_F(CheckerTest, InvalidOperation)
 {
-    Checker checker(logger);
-    ParsedArgs args;
-    args.operation = '?';
-    EXPECT_THROW(checker.checkParsedArgs(args), ValidationError);
-}
-
-TEST_F(CheckerTest, MissingOperation)
-{
-    Checker checker(logger);
-    ParsedArgs args;
-    args.operation = '\0';
-    EXPECT_THROW(checker.checkParsedArgs(args), ValidationError);
+    Checker checker;
+    EXPECT_THROW(checker.checkOperation(Operation::UNKNOWN, logger), ValidationError);
 }

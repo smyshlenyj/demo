@@ -6,6 +6,8 @@
 struct QueryResultRow
 {
     std::vector<std::string> columns;  // column values as strings
+
+    QueryResultRow() noexcept = default;
 };
 
 class IDatabase

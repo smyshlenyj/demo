@@ -13,10 +13,15 @@ Checks: >
 
 WarningsAsErrors: 'clang-analyzer-*'
 
-HeaderFilterRegex: '.*'
+# HeaderFilterRegex: '.*'
+HeaderFilterRegex: 'src/.*'   # не проверяем generated/
 
 FormatStyle: file
 
 CheckOptions:
   - key:             readability-braces-around-statements.ShortStatementLines
     value:           1
+  - key: bugprone-reserved-identifier.IgnoreGlob
+    value: 'build/generated/*'
+  - key: readability-identifier-length.IgnoreGlob
+    value: 'build/generated/*'

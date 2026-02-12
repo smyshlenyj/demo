@@ -1,110 +1,202 @@
 #pragma once
 
 #include <memory>
+#include <thread>
 #include <string>
-#include <stdexcept>
+#include <csignal>
 #include <iostream>
 
-#include "parsedArgs.hpp"
+#include <grpcpp/grpcpp.h>
+#include "calc.grpc.pb.h"
+
 #include "ILogger.hpp"
-#include "IDatabase.hpp"
 #include "loggerWrapper.hpp"
 #include "postgresDatabase.hpp"
 #include "calculationStorage.hpp"
-#include "parser.hpp"
 #include "checker.hpp"
 #include "calculator.hpp"
-#include "printer.hpp"
+#include "converters.hpp"
 
+// ===== Runner =====
 class Runner
 {
    public:
     Runner()
     {
+        LoggerWrapper::init();
+        log_ = LoggerWrapper::get();
+        log_->info("Runner ctor called");
     }
 
-    void run(const std::string& jsonString)
+    void init()
     {
-        try
+        const std::string connStr = "host=localhost port=5432 dbname=calc user=calc_user password=calc_pass";
+        pgDb_ = std::make_unique<PostgresDatabase>(connStr, log_);
+        storage_ = std::make_unique<CalculationStorage>(log_, *pgDb_);
+        storage_->warmUp();
+    }
+
+    std::int64_t calculate(std::int64_t first, std::int64_t second, calc::Operation protoOperation)
+    {
+        std::stringstream sstream;
+        sstream << std::this_thread::get_id();
+        std::string tid = "Thread " + sstream.str() + " Runner:calculate";
+        log_->info(tid);
+
+        if (!storage_) throw std::runtime_error("Runner not initialized");
+
+        Operation operation = toLocalOperation(protoOperation);
+
+        Checker::checkOperation(operation, log_);
+
+        auto cached = storage_->getCachedResult(first, second, operation);
+        if (cached)
         {
-            LoggerWrapper::init();
-
-            log_ = LoggerWrapper::get();
-            log_->info("=========================");
-            log_->info("Calc started");
-            log_->trace("Entered Runner::run");
-
-            PostgresDatabase pgDb("host=localhost port=5432 dbname=calc user=calc_user password=calc_pass", log_);
-            log_->trace("Established connection to PostgreSQL database");
-
-            IDatabase& database = pgDb;
-            CalculationStorage storage(log_, database);
-            log_->trace("CalculationStorage initialized");
-            auto warm = storage.warmUp();  // cache warm up
-            log_->trace("Cache warmed up");
-
-            Parser parser(log_);
-            auto parsedArgs = parser.parse(jsonString);
-
-            Checker checker(log_);
-            checker.checkParsedArgs(parsedArgs);
-
-            // --------------------------
-            // Check result: cached or not
-            // --------------------------
-            std::int64_t result;
-            auto cached = storage.getCachedResult(warm, parsedArgs);
-
-            if (cached)
-            {
-                log_->info("Result found in cache");
-                result = cached.value();
-            }
-            else
-            {
-                Calculator calculator(log_);
-                result = calculator.executeOperation(parsedArgs);
-
-                // save to database
-                CacheRecord newRecord{parsedArgs.first, parsedArgs.second, parsedArgs.operation, result};
-                newRecord.normalize();
-                storage.save(newRecord);
-
-                // save to cache ? now is not necessary, because next time it will be read from DB
-                warm.push_back(newRecord);
-            }
-
-            // Print result
-            Printer printer(log_);
-            printer.printResult(parsedArgs, result);
-
-            log_->info("Calc finished successfully");
+            log_->info("Result found in cache");
+            return cached.value();
         }
 
-        catch (const ParseError& e)
-        {
-            log_->error(std::string("Parse error: ") + e.what());
-            std::cerr << "Error: " << e.what() << "\n";
-        }
+        std::int64_t result = Calculator::executeOperation(first, second, operation, log_);
+        CacheRecord newRecord{first, second, operation, result};
+        newRecord.normalize();
+        storage_->save(newRecord);
 
-        catch (const ValidationError& e)
-        {
-            log_->error(std::string("Validation error: ") + e.what());
-            std::cerr << "Error: " << e.what() << "\n";
-        }
+        return result;
+    }
 
-        catch (const std::invalid_argument& e)  // mathlib exceptions
-        {
-            log_->error(std::string("Calculation error: ") + e.what());
-            std::cerr << "Error: " << e.what() << "\n";
-        }
-
-        catch (...)
-        {
-            log_->error("Unknown exception");
-        }
+    std::shared_ptr<ILogger> getLogger() const
+    {
+        return log_;
     }
 
    private:
     std::shared_ptr<ILogger> log_;
+    std::unique_ptr<PostgresDatabase> pgDb_;
+    std::unique_ptr<CalculationStorage> storage_;
+};
+
+// ===== gRPC service =====
+class CalculatorServiceImpl final : public calc::Calculator::Service
+{
+   public:
+    explicit CalculatorServiceImpl(const std::shared_ptr<Runner>& runner, const std::shared_ptr<ILogger>& log)
+        : runner_(runner), log_(log)
+    {
+    }
+
+    grpc::Status Compute(grpc::ServerContext* /*context*/, const calc::CalcRequest* request,
+                         calc::CalcResponse* reply) override
+    {
+        if (!request)
+        {
+            return grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "request is nullptr");
+        }
+
+        log_->info("request received: a=" + std::to_string(request->a()) + ", b=" + std::to_string(request->b()) +
+                   ", op=" + operationToString(toLocalOperation(request->op())));
+
+        try
+        {
+            std::int64_t result = runner_->calculate(request->a(), request->b(), request->op());
+            reply->set_result(result);
+            return grpc::Status::OK;
+        }
+        catch (const std::exception& e)
+        {
+            return grpc::Status(grpc::StatusCode::INTERNAL, e.what());
+        }
+    }
+
+   private:
+    std::shared_ptr<Runner> runner_;
+    std::shared_ptr<ILogger> log_;
+};
+
+// ===== Server orchestrator =====
+class ServerRunner
+{
+   public:
+    void run()
+    {
+        blockSignals();
+
+        runner_ = std::make_shared<Runner>();
+        runner_->init();
+
+        service_ = std::make_shared<CalculatorServiceImpl>(runner_, runner_->getLogger());
+
+        serverThread_ = std::thread(&ServerRunner::serverLoop, this);
+        {
+            std::unique_lock<std::mutex> lock(startMutex_);
+            startCv_.wait(lock, [this] { return server_ != nullptr; });
+        }
+
+        signalThread_ = std::thread(&ServerRunner::signalLoop, this);
+
+        signalThread_.join();
+        serverThread_.join();
+    }
+
+   private:
+    void serverLoop()
+    {
+        std::string serverAddress("0.0.0.0:50051");
+        grpc::ServerBuilder builder;
+        if (!service_)
+        {
+            std::cerr << "ERROR: service_ is null!\n";
+            std::terminate();
+        }
+        builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials());
+        builder.RegisterService(service_.get());
+
+        {
+            std::lock_guard<std::mutex> lock(startMutex_);
+            server_ = builder.BuildAndStart();
+            serverReady_ = true;
+        }
+        startCv_.notify_all();
+
+        std::cout << "gRPC server started on " << serverAddress << "\n";
+        server_->Wait();
+    }
+
+    void signalLoop()
+    {
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, SIGTERM);
+        sigaddset(&set, SIGINT);
+
+        int sig;
+        sigwait(&set, &sig);
+        std::cout << "Signal received: " << sig << ", shutting down server\n";
+
+        std::shared_ptr<grpc::Server> srv;
+        {
+            std::lock_guard<std::mutex> lock(startMutex_);
+            srv = server_;
+        }
+        if (srv) srv->Shutdown();
+    }
+
+    static void blockSignals()
+    {
+        sigset_t set;
+        sigemptyset(&set);
+        sigaddset(&set, SIGTERM);
+        sigaddset(&set, SIGINT);
+        pthread_sigmask(SIG_BLOCK, &set, nullptr);
+    }
+
+   private:
+    bool serverReady_ = false;
+    std::shared_ptr<grpc::Server> server_;
+    std::thread serverThread_;
+    std::thread signalThread_;
+    std::shared_ptr<CalculatorServiceImpl> service_;
+    std::shared_ptr<Runner> runner_;
+
+    std::mutex startMutex_;
+    std::condition_variable startCv_;
 };
