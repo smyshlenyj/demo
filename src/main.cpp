@@ -1,9 +1,25 @@
+#include <iostream>
 #include "runner.hpp"
 
-int main(int argc, char* argv[])
+int main()
 {
-    Runner runner;
-    runner.run(argc < 2 ? "" : argv[1]);
+    std::cout << "MAIN START\n";
+    try
+    {
+        ServerRunner server;
+        server.run();
 
-    return 0;
+        return 0;
+    }
+
+    catch (const std::exception& e)
+    {
+        std::cerr << "Fatal error: " << e.what() << '\n';
+        return 1;
+    }
+    catch (...)
+    {
+        std::cerr << "Unknown fatal error" << '\n';
+        return 1;
+    }
 }

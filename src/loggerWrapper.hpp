@@ -14,23 +14,18 @@ class LoggerWrapper
    public:
     static void init()
     {
-        static std::shared_ptr<spdlog::logger> loggerInstance;
-
         if (!spdlog::get("app"))
         {
             try
             {
-                loggerInstance = spdlog::basic_logger_mt("app", "app.log");
-                loggerInstance->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
-                loggerInstance->set_level(spdlog::level::trace);
-                loggerInstance->flush_on(spdlog::level::trace);
-
-                // loggerInstance->info("Logger initialized at: {}", logPath.string());
+                auto logger = spdlog::basic_logger_mt("app", "app.log");
+                logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%^%l%$] %v");
+                logger->set_level(spdlog::level::trace);
+                logger->flush_on(spdlog::level::trace);
             }
 
             catch (const spdlog::spdlog_ex& e)
             {
-                loggerInstance->error("Logger init failed");
                 std::cerr << "Logger init failed: " << e.what() << "\n";
             }
         }
@@ -38,12 +33,12 @@ class LoggerWrapper
 
     static std::shared_ptr<ILogger> get()
     {
-        static std::shared_ptr<ILogger> instance = []()
+        auto spd = spdlog::get("app");
+        if (!spd)
         {
-            auto spd = spdlog::get("app");
-            if (!spd) throw std::runtime_error("Logger not initialized");
-            return std::make_shared<SpdLogger>(spd);
-        }();
-        return instance;
+            throw std::runtime_error("Logger not initialized");
+        }
+
+        return std::make_shared<SpdLogger>(spd);
     }
 };

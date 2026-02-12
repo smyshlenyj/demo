@@ -6,45 +6,46 @@
 #include <cstdint>
 
 #include "mathlib.hpp"
-#include "parsedArgs.hpp"
 #include "ILogger.hpp"
 #include "cacheRecord.hpp"
+#include "calc.grpc.pb.h"  // сгенерированный gRPC код
 
 class Calculator
 {
    public:
-    Calculator(std::shared_ptr<ILogger> log) : log_(std::move(log))
+    Calculator()
     {
     }
 
-    std::int64_t executeOperation(const ParsedArgs& args)
+    static std::int64_t executeOperation(std::int64_t first, std::int64_t second, Operation operation,
+                                         const std::shared_ptr<ILogger>& log)
     {
-        log_->trace("Entered Calculator::executeOperation");
+        log->trace("Entered Calculator::executeOperation");
 
         std::int64_t result;
 
-        switch (args.operation)
+        switch (operation)
         {
-            case '+':
-                result = mathlib::add(args.first, args.second);
+            case Operation::ADD:
+                result = mathlib::add(first, second);
                 break;
-            case '-':
-                result = mathlib::subtract(args.first, args.second);
+            case Operation::SUB:
+                result = mathlib::subtract(first, second);
                 break;
-            case 'x':
-                result = mathlib::multiply(args.first, args.second);
+            case Operation::MUL:
+                result = mathlib::multiply(first, second);
                 break;
-            case '/':
-                result = mathlib::divide(args.first, args.second);
+            case Operation::DIV:
+                result = mathlib::divide(first, second);
                 break;
-            case '^':
-                result = mathlib::power(mathlib::Base{args.first}, mathlib::Exponent{args.second});
+            case Operation::POW:
+                result = mathlib::power(mathlib::Base{first}, mathlib::Exponent{second});
                 break;
-            case '!':
-                result = mathlib::factorial(args.first);
+            case Operation::FACT:
+                result = mathlib::factorial(first);
                 break;
             default:
-                log_->critical(std::string("Unexpected operation reached Calculator: ") + args.operation);
+                log->critical(std::string("Unexpected operation reached Calculator: "));
                 std::terminate();
         }
 
@@ -70,5 +71,5 @@ class Calculator
         // std::cout << "Burner sum: " << sum << "\n";
     }
 
-    std::shared_ptr<ILogger> log_;
+    // std::shared_ptr<ILogger> log_;
 };

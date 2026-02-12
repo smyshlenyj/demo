@@ -4,8 +4,8 @@
 #include <stdexcept>
 #include <string>
 
-#include "parsedArgs.hpp"
 #include "ILogger.hpp"
+#include "operation.hpp"
 
 struct ValidationError : std::logic_error
 {
@@ -15,30 +15,28 @@ struct ValidationError : std::logic_error
 class Checker
 {
    public:
-    Checker(std::shared_ptr<ILogger> log) : log_(std::move(log))
+    explicit Checker()
     {
     }
 
-    void checkParsedArgs(const ParsedArgs& args)
+    static void checkOperation(Operation operation, const std::shared_ptr<ILogger>& log)
     {
-        log_->trace("Entered Checker::checkParsedArgs");
+        log->trace("Entered Checker::checkOperation");
 
-        if (args.operation == '\0') throw ValidationError("Operation is missing");
-
-        switch (args.operation)
+        switch (operation)
         {
-            case '+':
-            case '-':
-            case 'x':
-            case '/':
-            case '^':
-            case '!':
+            case Operation::ADD:
+            case Operation::SUB:
+            case Operation::MUL:
+            case Operation::DIV:
+            case Operation::POW:
+            case Operation::FACT:
                 return;
             default:
-                throw ValidationError("Invalid operation: " + std::string(1, args.operation));
+                throw ValidationError("Invalid operation");
         }
     }
 
    private:
-    std::shared_ptr<ILogger> log_;
+    // std::shared_ptr<ILogger> log_;
 };

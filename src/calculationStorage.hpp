@@ -5,10 +5,13 @@
 #include <string>
 #include <optional>
 #include <algorithm>
+#include <shared_mutex>
 
 #include "IDatabase.hpp"
 #include "cacheRecord.hpp"
 #include "ILogger.hpp"
+#include "operation.hpp"
+#include "converters.hpp"
 
 class CalculationStorage
 {
@@ -18,7 +21,7 @@ class CalculationStorage
     {
     }
 
-    std::vector<CacheRecord> warmUp()
+    void warmUp()
     {
         log_->trace("Entered CalculationStorage::warmUp");
 
@@ -26,35 +29,39 @@ class CalculationStorage
             "SELECT lhs, rhs, op, result FROM calc_cache "
             "ORDER BY created_at DESC");
 
-        std::vector<CacheRecord> records;
-        records.reserve(rows.size());
-
-        for (const auto& row : rows)
         {
-            records.push_back({std::stoll(row.columns[0]), std::stoll(row.columns[1]), row.columns[2][0],
-                               std::stoll(row.columns[3])});
-        }
+            std::unique_lock<std::shared_mutex> lock(mutex_);
 
-        return records;
+            for (const auto& row : rows)
+            {
+                Operation operation = operationFromString(row.columns[2]);  // convert string to enum
+                warm_.push_back(
+                    {std::stoll(row.columns[0]), std::stoll(row.columns[1]), operation, std::stoll(row.columns[3])});
+            }
+        }
     }
 
     void save(const CacheRecord& record)
     {
         log_->trace("Entered CalculationStorage::save");
+
         database_.execute("INSERT INTO calc_cache(lhs, rhs, op, result, created_at) VALUES (" +
                           std::to_string(record.lhs) + ", " + std::to_string(record.rhs) + ", '" +
-                          std::string(1, record.op) + "', " + std::to_string(record.result) + ", now())");
+                          operationToString(record.op) + "', " + std::to_string(record.result) +
+                          ", now()) ON CONFLICT (lhs, rhs, op) DO NOTHING");
     }
 
-    std::optional<std::int64_t> getCachedResult(const std::vector<CacheRecord>& cache, const ParsedArgs& args)
+    std::optional<std::int64_t> getCachedResult(std::int64_t first, std::int64_t second, Operation operation)
     {
+        std::shared_lock<std::shared_mutex> lock(mutex_);
+
         log_->trace("Entered CalculationStorage::getCachedResult");
 
-        auto cachedRecordIt = std::find_if(
-            cache.begin(), cache.end(), [&](const CacheRecord& record)
-            { return record.lhs == args.first && record.rhs == args.second && record.op == args.operation; });
+        auto cachedRecordIt =
+            std::find_if(warm_.begin(), warm_.end(), [&](const CacheRecord& record)
+                         { return record.lhs == first && record.rhs == second && record.op == operation; });
 
-        if (cachedRecordIt != cache.end()) return cachedRecordIt->result;
+        if (cachedRecordIt != warm_.end()) return cachedRecordIt->result;
 
         return std::nullopt;
     }
@@ -62,4 +69,6 @@ class CalculationStorage
    private:
     std::shared_ptr<ILogger> log_;
     IDatabase& database_;
+    std::vector<CacheRecord> warm_;    // shared cache in memory
+    mutable std::shared_mutex mutex_;  // cashe mutex for thread safety
 };

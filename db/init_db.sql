@@ -29,7 +29,7 @@ CREATE DATABASE calc OWNER calc_user;
 CREATE TABLE IF NOT EXISTS calc_cache (
     lhs BIGINT NOT NULL,            
     rhs BIGINT NOT NULL,            
-    op CHAR(1) NOT NULL,            
+    op VARCHAR(10) NOT NULL,        -- теперь строка ENUM-подобная
     result BIGINT NOT NULL,         
     created_at TIMESTAMP DEFAULT now(), 
     PRIMARY KEY (lhs, rhs, op)     
@@ -54,14 +54,14 @@ TRUNCATE TABLE calc_cache;
 -- Вставка ручных примеров
 -- ----------------------------
 INSERT INTO calc_cache(lhs, rhs, op, result) VALUES
-    (2, 3, '+', 5),
-    (10, 5, '-', 5),
-    (4, 7, 'x', 28),   
-    (20, 4, '/', 5),
-    (0, 0, '+', 0),
-    (100, 25, '-', 75),
-    (6, 6, 'x', 36),   
-    (15, 3, '/', 5)
+    (2, 3, 'ADD', 5),
+    (10, 5, 'SUB', 5),
+    (4, 7, 'MUL', 28),
+    (20, 4, 'DIV', 5),
+    (0, 0, 'ADD', 0),
+    (100, 25, 'SUB', 75),
+    (6, 6, 'MUL', 36),
+    (15, 3, 'DIV', 5)
 ON CONFLICT(lhs, rhs, op) DO NOTHING;
 
 -- ----------------------------
@@ -70,17 +70,17 @@ ON CONFLICT(lhs, rhs, op) DO NOTHING;
 INSERT INTO calc_cache(lhs, rhs, op, result)
 SELECT i, j, op, 
        CASE op
-           WHEN '+' THEN i + j
-           WHEN '-' THEN i - j
-           WHEN 'x' THEN i * j
-           WHEN '/' THEN CASE WHEN j != 0 THEN i / j ELSE 0 END
+           WHEN 'ADD' THEN i + j
+           WHEN 'SUB' THEN i - j
+           WHEN 'MUL' THEN i * j
+           WHEN 'DIV' THEN CASE WHEN j != 0 THEN i / j ELSE 0 END
        END
 FROM generate_series(1, 10) AS i,
      generate_series(1, 10) AS j,
-     (VALUES ('+'), ('-'), ('x'), ('/')) AS ops(op)
+     (VALUES ('ADD'), ('SUB'), ('MUL'), ('DIV')) AS ops(op)
 ON CONFLICT(lhs, rhs, op) DO NOTHING;
 
 -- ----------------------------
 -- Готово
 -- ----------------------------
-\echo "Database calc, user calc_user created and cache table filled."
+\echo "Database calc, user calc_user created and cache table filled with correct operations."

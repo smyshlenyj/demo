@@ -16,5 +16,6 @@ app.log
 # Temporary testing
 Testing/Temporary/
 
-# Old cpp
-exclude/
+# python
+/venv/
+/python/
